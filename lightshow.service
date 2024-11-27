@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=pizw
+User=prezaei
 WorkingDirectory=/home/pizw/lightShow
-ExecStart=/usr/bin/python3 /home/pizw/lightShow/lightShow.py
+ExecStart=/usr/bin/python3 /home/prezaei/lightShow/lightShow.py
 Restart=on-failure
 
 [Install]
