@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=prezaei
-WorkingDirectory=/home/pizw/lightShow
+User=root
+WorkingDirectory=/home/prezaei/lightShow
 ExecStart=/usr/bin/python3 /home/prezaei/lightShow/lightShow.py
 Restart=on-failure
 
