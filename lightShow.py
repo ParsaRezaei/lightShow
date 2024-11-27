@@ -1,4 +1,7 @@
-﻿from flask import Flask, render_template, request, jsonify
+﻿import eventlet
+eventlet.monkey_patch()
+
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import threading
 import time
@@ -12,7 +15,7 @@ DEVELOPMENT_MODE = False
 
 if not DEVELOPMENT_MODE:
     # Initialize serial connection
-    serial_port = '/dev/serial0'  # Replace with your ESP32 serial port
+    serial_port = 'COM6'  # Replace with your ESP32 serial port
     serial_baud_rate = 115200
     serial_connection = serial.Serial(serial_port, serial_baud_rate, timeout=1, write_timeout=2)
     print(f"Connected to ESP32 on {serial_port}")
