@@ -278,7 +278,7 @@ def handle_connect():
 if __name__ == "__main__":
     try:
         # Run the Flask-SocketIO app
-        socketio.run(app, host="0.0.0.0", port=5000)
+        socketio.run(app, host="0.0.0.0", port=80)
     except Exception as e:
         print(f"Error: {e}")
         if not DEVELOPMENT_MODE and serial_connection:
