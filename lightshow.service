@@ -1,0 +1,14 @@
+[Unit]
+Description=Light Show Python Application
+After=network.target
+
+[Service]
+Type=simple
+User=prezaei
+WorkingDirectory=/home/pizw/lightShow
+ExecStart=/usr/bin/python3 /home/prezaei/lightShow/lightShow.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
