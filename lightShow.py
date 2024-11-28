@@ -6,7 +6,6 @@ from flask_socketio import SocketIO, emit
 import threading
 import time
 import serial
-import re  # Import regular expressions module for parsing
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -22,7 +21,6 @@ if not DEVELOPMENT_MODE:
     print(f"Connected to ESP32 on {serial_port}")
 else:
     print("Development mode enabled.")
-    serial_connection = None  # Prevent errors when accessing serial_connection
 
 # Global variables
 light_states = [0, 0, 0, 0]  # PWM duty cycles (0-255 for each light)
@@ -33,49 +31,14 @@ minimum_on_time = 2.0  # Default minimum ON time (seconds at 100% speed)
 speed_adjustment = 0  # Speed adjustment percentage (-100% to +100%)
 minimum_pwm = 0  # Default minimum PWM
 maximum_pwm = 255  # Default maximum PWM
-all_lights_on = False  # Flag to track if 'All Lights On' is set
-current_reading = 0.0  # Variable to store the latest current reading
-
-def serial_reader():
-    """Thread function to read data from the serial port."""
-    global serial_connection, current_reading
-
-    if not serial_connection:
-        return
-
-    while True:
-        try:
-            line = serial_connection.readline().decode('utf-8').strip()
-            if line:
-                print(f"Serial Input: {line}")
-                # Check if the line contains the current reading
-                match = re.match(r"Measured Current: ([\d\.\-]+) A", line)
-                if match:
-                    current_reading = float(match.group(1))
-                    # Emit the current reading to the front-end
-                    socketio.emit('current_reading', {'current': current_reading})
-        except Exception as e:
-            print(f"Error reading from serial port: {e}")
-            time.sleep(1)
 
 def stop_current_behavior():
     """Stop any ongoing behavior."""
-    global current_behavior, behavior_thread, light_states, all_lights_on
+    global current_behavior, behavior_thread
     if current_behavior != "default":
         current_behavior = "default"
         if behavior_thread and behavior_thread.is_alive():
             behavior_thread.join()
-        # Restore lights based on 'all_lights_on' flag
-        if all_lights_on:
-            # Turn all lights on
-            for i in range(4):
-                light_states[i] = 255
-        else:
-            # Turn all lights off
-            for i in range(4):
-                light_states[i] = 0
-        update_light_states()
-        socketio.emit("update_light_states", light_states)
 
 def calculate_adjusted_duration():
     """Calculate the adjusted duration based on the speed adjustment."""
@@ -217,28 +180,25 @@ def control_light():
     data = request.json
     light = int(data["light"]) - 1
     duty_cycle = max(0, min(255, int(data["duty_cycle"])))  # Clamp to 0-255
-    # Individual light adjustment does not affect 'all_lights_on' flag
+    # Individual light adjustment does not affect ongoing behaviors
     set_light(light, duty_cycle)
     return jsonify(light_states)
 
 @app.route("/turn-all-lights", methods=["POST"])
 def turn_all_lights():
     """Set all lights to the same PWM duty cycle."""
-    global all_lights_on
     data = request.json
     duty_cycle = max(0, min(255, int(data["duty_cycle"])))  # Clamp to 0-255
-    if duty_cycle == 255:
-        all_lights_on = True
-    else:
-        all_lights_on = False
-    if current_behavior == "default":
-        for i in range(4):
-            light_states[i] = duty_cycle
-        update_light_states()
-        socketio.emit("update_light_states", light_states)
-    else:
-        # Behavior is active, do not change light_states now
-        pass
+
+    # Interrupt any ongoing behavior
+    stop_current_behavior()
+
+    # Set all lights to the specified duty cycle
+    for i in range(4):
+        light_states[i] = duty_cycle
+    update_light_states()
+    socketio.emit("update_light_states", light_states)
+
     return jsonify(light_states)
 
 @app.route("/set-behavior", methods=["POST"])
@@ -297,16 +257,11 @@ def handle_connect():
     emit('initial_settings', {
         'speed_adjustment': speed_adjustment,
         'minimum_on_time': minimum_on_time,
-        'light_states': light_states,  # Send current light states
-        'current_reading': current_reading  # Send initial current reading
+        'light_states': light_states  # Send current light states
     })
 
 if __name__ == "__main__":
     try:
-        # Start the serial reader thread
-        if not DEVELOPMENT_MODE:
-            serial_thread = threading.Thread(target=serial_reader, daemon=True)
-            serial_thread.start()
         # Run the Flask-SocketIO app
         socketio.run(app, host="0.0.0.0", port=80)
     except Exception as e:
