@@ -27,9 +27,9 @@ light_states = [0, 0, 0, 0]  # PWM duty cycles (0-255 for each light)
 previous_light_states = [0, 0, 0, 0]  # Track last known light states
 current_behavior = "default"
 behavior_thread = None
-minimum_on_time = 2.0  # Default minimum ON time (seconds at 100% speed)
+minimum_on_time = 0.5  # Default minimum ON time (seconds at 100% speed)
 speed_adjustment = 0  # Speed adjustment percentage (-100% to +100%)
-minimum_pwm = 0  # Default minimum PWM
+minimum_pwm = 140  # Default minimum PWM
 maximum_pwm = 255  # Default maximum PWM
 
 def stop_current_behavior():
