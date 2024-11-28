@@ -53,6 +53,8 @@ def update_light_states():
 
     changes_detected = False
     for i in range(4):
+        # Clamp the light_states between 0 and 255
+        light_states[i] = max(0, min(255, light_states[i]))
         if light_states[i] != previous_light_states[i]:
             changes_detected = True
             previous_light_states[i] = light_states[i]
@@ -70,6 +72,8 @@ def set_light(index, duty_cycle):
     """Set the PWM value (duty cycle) of a specific light."""
     global light_states
     if current_behavior == "default":
+        # Clamp duty_cycle between minimum_pwm and maximum_pwm
+        duty_cycle = max(minimum_pwm, min(maximum_pwm, duty_cycle))
         light_states[index] = duty_cycle
         update_light_states()  # Check for changes and update if needed
         socketio.emit("update_light_states", light_states)
@@ -179,7 +183,7 @@ def control_light():
     """Manually set an individual light's PWM duty cycle."""
     data = request.json
     light = int(data["light"]) - 1
-    duty_cycle = max(0, min(255, int(data["duty_cycle"])))  # Clamp to 0-255
+    duty_cycle = int(data["duty_cycle"])
     # Individual light adjustment does not affect ongoing behaviors
     set_light(light, duty_cycle)
     return jsonify(light_states)
@@ -188,10 +192,19 @@ def control_light():
 def turn_all_lights():
     """Set all lights to the same PWM duty cycle."""
     data = request.json
-    duty_cycle = max(0, min(255, int(data["duty_cycle"])))  # Clamp to 0-255
+    action = data.get("action")
 
     # Interrupt any ongoing behavior
     stop_current_behavior()
+
+    if action == "on":
+        duty_cycle = maximum_pwm
+    elif action == "off":
+        duty_cycle = 0  # Assuming we can turn lights completely off
+    else:
+        duty_cycle = int(data.get("duty_cycle", maximum_pwm))
+        # Clamp duty_cycle between minimum_pwm and maximum_pwm
+        duty_cycle = max(minimum_pwm, min(maximum_pwm, duty_cycle))
 
     # Set all lights to the specified duty cycle
     for i in range(4):
@@ -216,7 +229,7 @@ def set_behavior():
         stop_current_behavior()
         # Before starting the new behavior, turn all lights off
         for i in range(4):
-            light_states[i] = 0
+            light_states[i] = maximum_pwm  # Start from maximum brightness
         update_light_states()
         socketio.emit("update_light_states", light_states)
         # Start the new behavior
@@ -257,7 +270,9 @@ def handle_connect():
     emit('initial_settings', {
         'speed_adjustment': speed_adjustment,
         'minimum_on_time': minimum_on_time,
-        'light_states': light_states  # Send current light states
+        'light_states': light_states,  # Send current light states
+        'minimum_pwm': minimum_pwm,
+        'maximum_pwm': maximum_pwm
     })
 
 if __name__ == "__main__":

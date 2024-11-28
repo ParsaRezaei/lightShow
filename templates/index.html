@@ -100,19 +100,19 @@
             <div id="control-lights">
                 <div class="slider-container">
                     <span>Light 1</span>
-                    <input type="range" min="0" max="255" value="0" id="light1" oninput="updateLight(1, this.value)">
+                    <input type="range" id="light1" oninput="updateLight(1, this.value)">
                 </div>
                 <div class="slider-container">
                     <span>Light 2</span>
-                    <input type="range" min="0" max="255" value="0" id="light2" oninput="updateLight(2, this.value)">
+                    <input type="range" id="light2" oninput="updateLight(2, this.value)">
                 </div>
                 <div class="slider-container">
                     <span>Light 3</span>
-                    <input type="range" min="0" max="255" value="0" id="light3" oninput="updateLight(3, this.value)">
+                    <input type="range" id="light3" oninput="updateLight(3, this.value)">
                 </div>
                 <div class="slider-container">
                     <span>Light 4</span>
-                    <input type="range" min="0" max="255" value="0" id="light4" oninput="updateLight(4, this.value)">
+                    <input type="range" id="light4" oninput="updateLight(4, this.value)">
                 </div>
             </div>
         </div>
@@ -122,12 +122,11 @@
             <div class="container-title">Master Control</div>
             <div class="slider-container">
                 <span>All Lights</span>
-                <input type="range" min="0" max="255" value="0" id="all-lights-slider"
-                    oninput="updateAllLights(this.value)">
+                <input type="range" id="all-lights-slider" oninput="updateAllLights(this.value)">
             </div>
             <div class="master-buttons">
-                <button class="btn btn-primary" onclick="turnAllLights(255)">All ON</button>
-                <button class="btn btn-secondary" onclick="turnAllLights(0)">All OFF</button>
+                <button class="btn btn-primary" onclick="turnAllLights('on')">All ON</button>
+                <button class="btn btn-secondary" onclick="turnAllLights('off')">All OFF</button>
             </div>
         </div>
 
@@ -151,7 +150,7 @@
             </div>
             <div class="slider-container">
                 <label for="minimum-on-time">Minimum On Time (seconds):</label>
-                <input type="number" step="0.1" min="0.1" value="2.0" id="minimum-on-time"
+                <input type="number" step="0.1" min="0.1" value="0.5" id="minimum-on-time"
                     onchange="updateMinimumOnTime(this.value)">
             </div>
         </div>
@@ -185,11 +184,16 @@
 
             // Update light sliders
             for (let i = 0; i < data.light_states.length; i++) {
-                document.getElementById(`light${i + 1}`).value = data.light_states[i];
+                const lightSlider = document.getElementById(`light${i + 1}`);
+                lightSlider.min = data.minimum_pwm;
+                lightSlider.max = data.maximum_pwm;
+                lightSlider.value = data.light_states[i];
             }
 
-            // Update 'All Lights' slider if all lights have the same value
+            // Update 'All Lights' slider
             const allLightsSlider = document.getElementById('all-lights-slider');
+            allLightsSlider.min = data.minimum_pwm;
+            allLightsSlider.max = data.maximum_pwm;
             const allSame = data.light_states.every((val, i, arr) => val === arr[0]);
             if (allSame) {
                 allLightsSlider.value = data.light_states[0];
@@ -215,11 +219,11 @@
         }
 
         // Turn all lights ON or OFF
-        function turnAllLights(dutyCycle) {
+        function turnAllLights(action) {
             fetch("/turn-all-lights", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ duty_cycle: dutyCycle }),
+                body: JSON.stringify({ action }),
             });
         }
 
