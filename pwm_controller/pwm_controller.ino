@@ -1,12 +1,26 @@
 #include <Arduino.h>
 
 // Define PWM parameters
-const int pwmPins[] = {3, 4, 5, 6};  // GPIO pins for PWM channels
-const int pwmFrequency = 5000;       // Frequency (5 kHz)
-const int pwmResolution = 8;         // 8-bit resolution (0-255)
+const int pwmPins[] = {0, 1, 2, 3};       // GPIO pins for PWM channels
+const int pwmFrequency = 5000;            // Frequency (5 kHz)
+const int pwmResolution = 8;              // 8-bit resolution (0-255)
 
 // Current duty cycle values
-int dutyCycle[] = {0, 0, 0, 0};  // Start all lights with 0 duty cycle
+int dutyCycle[] = {0, 0, 0, 0};  // Start all outputs with 0 duty cycle
+
+// Current sensor parameters
+const int currentSensorPin = 4;           // GPIO pin for ACS712 output
+const float sensitivity = 0.066;          // Sensitivity of ACS712-30A in V/A (66mV/A)
+const float vcc = 3.3;                    // Operating voltage of ESP32
+const int adcResolution = 4096;           // ADC resolution (12-bit)
+
+// Function to calculate current
+float readCurrent() {
+  int rawValue = analogRead(currentSensorPin);  // Read ADC value
+  float voltage = (rawValue * vcc) / adcResolution; // Convert to voltage
+  float current = (voltage - (vcc / 2)) / sensitivity; // Calculate current
+  return current;  // Return current in Amps
+}
 
 void setup() {
   Serial.begin(115200);  // Initialize serial communication
@@ -25,13 +39,19 @@ void loop() {
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');  // Read incoming command
     command.trim();                                 // Remove whitespace
-    parseCommand(command);                         // Parse and apply command
+    parseCommand(command);                          // Parse and apply command
   }
+
+  // Read and display current from the sensor
+  float current = readCurrent();
+  Serial.printf("Measured Current: %.2f A\n", current);
+  delay(500);  // Add a delay to prevent spamming the serial monitor
 }
 
 void parseCommand(String command) {
   // Parse commands like "L1:128,L2:64,L3:0,L4:255"
   int start = 0;
+  int maxDutyCycle = (1 << pwmResolution) - 1;  // Calculate maximum duty cycle based on resolution
 
   while (start < command.length()) {
     // Find next colon and comma
@@ -44,12 +64,14 @@ void parseCommand(String command) {
       int duty = command.substring(colonIndex + 1, (commaIndex > 0 ? commaIndex : command.length())).toInt();
 
       // Validate light index and duty cycle
-      if (lightIndex >= 0 && lightIndex < 4 && duty >= 0 && duty <= 255) {
-        dutyCycle[lightIndex] = duty;  // Update duty cycle array
-        ledcWrite(pwmPins[lightIndex], duty);  // Apply duty cycle
+      if (lightIndex >= 0 && lightIndex < 4) {
+        // Ensure duty cycle stays within valid range
+        duty = constrain(duty, 0, maxDutyCycle);
+        dutyCycle[lightIndex] = duty;                    // Update duty cycle array
+        ledcWrite(pwmPins[lightIndex], duty);            // Apply duty cycle
         Serial.printf("Updated Light %d to Duty Cycle %d\n", lightIndex + 1, duty);
       } else {
-        Serial.println("Error: Invalid light number or duty cycle");
+        Serial.println("Error: Invalid light number");
       }
     }
 
