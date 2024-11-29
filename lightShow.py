@@ -1,4 +1,4 @@
-﻿import eventlet
+import eventlet
 eventlet.monkey_patch()
 
 from flask import Flask, render_template, request, jsonify
@@ -29,7 +29,7 @@ current_behavior = "default"
 behavior_thread = None
 minimum_on_time = 0.5  # Default minimum ON time (seconds at 100% speed)
 speed_adjustment = 0  # Speed adjustment percentage (-100% to +100%)
-minimum_pwm = 140  # Default minimum PWM
+minimum_pwm = 138  # Default minimum PWM
 maximum_pwm = 255  # Default maximum PWM
 
 def stop_current_behavior():
